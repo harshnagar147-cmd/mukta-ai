@@ -1,0 +1,504 @@
+<title>Mukta Message Loop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg: #FAF7F4;
+    --surface: #FFFFFF;
+    --ink: #201C1B;
+    --muted: #8A7570;
+    --line: #E4DAD3;
+    --accent: #C40C14;
+    --accent-tint: #FBEAE9;
+    --manual: #A9700C;
+    --manual-tint: #FBF1DF;
+    --data: #33586C;
+    --data-tint: #E7EFF2;
+    --good: #2E7D4F;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg: #17140F;
+      --surface: #211C18;
+      --ink: #F3ECE7;
+      --muted: #B8A49C;
+      --line: #3C332C;
+      --accent: #FF7A6B;
+      --accent-tint: #3A1F1D;
+      --manual: #E7B454;
+      --manual-tint: #3A2E13;
+      --data: #8FBAD1;
+      --data-tint: #1C2C33;
+      --good: #6FCB94;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg: #17140F;
+    --surface: #211C18;
+    --ink: #F3ECE7;
+    --muted: #B8A49C;
+    --line: #3C332C;
+    --accent: #FF7A6B;
+    --accent-tint: #3A1F1D;
+    --manual: #E7B454;
+    --manual-tint: #3A2E13;
+    --data: #8FBAD1;
+    --data-tint: #1C2C33;
+    --good: #6FCB94;
+  }
+
+  *{ box-sizing: border-box; }
+  body{
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", Arial, sans-serif;
+    margin: 0;
+    padding: 2.5rem 1.5rem 4rem;
+    display: flex;
+    justify-content: center;
+  }
+  .page{
+    width: 100%;
+    max-width: 1180px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+  }
+
+  header{
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+  }
+  .eyebrow{
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .72rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  h1{
+    font-size: clamp(1.6rem, 2.4vw, 2.05rem);
+    font-weight: 700;
+    margin: 0;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+  .dek{
+    font-size: 1rem;
+    color: var(--muted);
+    max-width: 62ch;
+    line-height: 1.55;
+    margin: 0;
+  }
+
+  figure{
+    margin: 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 1.25rem 1.25rem .9rem;
+  }
+  .diagram-scroll{
+    overflow-x: auto;
+  }
+  svg{
+    display: block;
+    width: 100%;
+    height: auto;
+    min-width: 880px;
+    font-family: "IBM Plex Sans", Arial, sans-serif;
+  }
+  figcaption{
+    font-size: .85rem;
+    color: var(--muted);
+    padding-top: .85rem;
+    margin-top: .85rem;
+    border-top: 1px solid var(--line);
+    line-height: 1.5;
+  }
+
+  /* --- node classes, shared by rect/cylinder shapes in the SVG --- */
+  .action-node rect{ fill: var(--surface); stroke: var(--ink); stroke-width: 1.4; }
+  .action-node text{ fill: var(--ink); }
+  .gate-node rect{ fill: var(--accent-tint); stroke: var(--accent); stroke-width: 2.2; }
+  .gate-node text{ fill: var(--accent); }
+  .gate-node .sub{ fill: var(--ink); opacity: .82; }
+  .data-node ellipse, .data-node rect{ fill: var(--data-tint); stroke: var(--data); stroke-width: 1.6; }
+  .data-node text{ fill: var(--data); font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  .manual-node rect{ fill: var(--manual-tint); stroke: var(--manual); stroke-width: 1.6; stroke-dasharray: 5 4; }
+  .manual-node text{ fill: var(--manual); }
+  .terminal-node rect{ fill: none; stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 3 3; }
+  .terminal-node text{ fill: var(--muted); }
+
+  .flow-line{ stroke: var(--ink); stroke-width: 1.6; fill: none; }
+  .data-line{ stroke: var(--data); stroke-width: 1.6; fill: none; stroke-dasharray: 6 4; }
+  .manual-line{ stroke: var(--manual); stroke-width: 1.6; fill: none; stroke-dasharray: 6 4; }
+  .branch-yes{ stroke: var(--good); stroke-width: 1.6; fill: none; }
+
+  .arrow-label{ font-size: 10.5px; fill: var(--muted); font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  .arrow-label.data{ fill: var(--data); }
+  .arrow-label.manual{ fill: var(--manual); }
+  .arrow-label.branch{ fill: var(--good); font-weight: 600; }
+
+  .step-badge circle{ fill: var(--ink); }
+  .step-badge text{ fill: var(--bg); font-weight: 600; font-size: 11px; }
+
+  .boundary-line{ stroke: var(--muted); stroke-width: 1.4; stroke-dasharray: 2 5; }
+  .boundary-label{ font-size: 10.5px; fill: var(--muted); font-style: italic; }
+
+  .node-title{ font-size: 12.5px; font-weight: 600; }
+  .node-sub{ font-size: 10.5px; }
+
+  /* --- lower sections --- */
+  .grid-two{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+  @media (max-width: 760px){ .grid-two{ grid-template-columns: 1fr; } }
+  .panel{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1.1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+  }
+  .panel h2{
+    font-size: .95rem;
+    margin: 0;
+    font-weight: 600;
+  }
+  .panel h2 .tag{
+    display: inline-block;
+    width: .6rem; height: .6rem;
+    border-radius: 2px;
+    margin-right: .5rem;
+    vertical-align: middle;
+  }
+  .panel p{
+    font-size: .88rem;
+    line-height: 1.55;
+    color: var(--muted);
+    margin: 0;
+  }
+  .panel p strong{ color: var(--ink); font-weight: 600; }
+
+  .legend{
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem 1.4rem;
+    font-size: .82rem;
+    color: var(--muted);
+    padding: 1rem 1.25rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  .legend-item{ display: flex; align-items: center; gap: .5rem; white-space: nowrap; }
+  .swatch{ width: 22px; height: 3px; flex: none; }
+  .swatch.solid{ background: var(--ink); }
+  .swatch.data{ background: repeating-linear-gradient(90deg, var(--data) 0 6px, transparent 6px 10px); }
+  .swatch.manual{ background: repeating-linear-gradient(90deg, var(--manual) 0 6px, transparent 6px 10px); }
+  .swatch.box{ width: 14px; height: 14px; border-radius: 3px; }
+  .swatch.gate{ border: 2.2px solid var(--accent); background: var(--accent-tint); }
+  .swatch.cyl{ border: 1.6px solid var(--data); background: var(--data-tint); border-radius: 40%; }
+
+  .status-strip{
+    display: flex;
+    flex-wrap: wrap;
+    gap: .6rem;
+  }
+  .chip{
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .74rem;
+    padding: .32rem .65rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+  }
+  .chip.proven{ color: var(--good); border-color: color-mix(in srgb, var(--good) 40%, var(--line)); }
+  .chip.unproven{ color: var(--manual); border-color: color-mix(in srgb, var(--manual) 40%, var(--line)); }
+  .chip::before{ content: ""; width: .45rem; height: .45rem; border-radius: 50%; background: currentColor; }
+
+  footer{
+    font-size: .78rem;
+    color: var(--muted);
+    text-align: center;
+    padding-top: .5rem;
+  }
+
+  @media print {
+    @page { size: A3 landscape; margin: 12mm; }
+    body { padding: 0; }
+    svg { min-width: 0; }
+  }
+</style>
+
+<div class="page">
+
+  <header>
+    <span class="eyebrow">System diagram · outreach &amp; feedback assistant</span>
+    <h1>One message, start to finish</h1>
+    <p class="dek">
+      The app has no automatic trigger and no channel of its own — every loop starts and ends
+      with an account manager, and WhatsApp sits entirely outside the system. What the software
+      contributes is the middle: two gates that read shared history before a draft is even
+      offered, a click-to-chat link that opens the message pre-filled instead of asking anyone
+      to copy it, and a queue that a rule — not a click — puts things into.
+    </p>
+  </header>
+
+  <figure>
+    <div class="diagram-scroll">
+      <svg viewBox="0 0 1300 590" role="img"
+           aria-label="A message starts when the account manager picks a client; two gates check the feedback and outreach logs before Gemini drafts it; the manager edits and clicks Open in WhatsApp, which opens the client's chat with the message pre-filled for a single press of Send; the manager confirms with Mark as sent; the client's reply is still transcribed back in by hand; a rule checks the new rating, routes it to an escalation queue or to reporting, and resolving a callback writes back into the same feedback log the first gate reads — closing the loop.">
+
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <!-- ============= boundary ============= -->
+        <line x1="1010" y1="18" x2="1010" y2="560" class="boundary-line"></line>
+        <text x="1000" y="34" text-anchor="end" class="boundary-label">system boundary — sending is one click + one press; replies still come back by hand</text>
+
+        <!-- ============= LANE A : draft &amp; send (y≈70-150) ============= -->
+
+        <!-- 1: pick client -->
+        <g class="action-node">
+          <rect x="20" y="64" width="180" height="58" rx="9"></rect>
+          <text x="110" y="88" text-anchor="middle" class="node-title">Pick client, owner,</text>
+          <text x="110" y="104" text-anchor="middle" class="node-title">service, language</text>
+        </g>
+        <g class="step-badge"><circle cx="16" cy="60" r="10"></circle><text x="16" y="64" text-anchor="middle">1</text></g>
+
+        <!-- gate: review -->
+        <g class="gate-node">
+          <rect x="252" y="46" width="190" height="46" rx="8"></rect>
+          <text x="347" y="65" text-anchor="middle" class="node-title">Review gate</text>
+          <text x="347" y="80" text-anchor="middle" class="node-sub sub">rated ≥4, nothing open?</text>
+        </g>
+
+        <!-- gate: cooldown -->
+        <g class="gate-node">
+          <rect x="252" y="108" width="190" height="46" rx="8"></rect>
+          <text x="347" y="127" text-anchor="middle" class="node-title">Cooldown gate</text>
+          <text x="347" y="142" text-anchor="middle" class="node-sub sub">past the segment's window?</text>
+        </g>
+
+        <!-- 1 -> gates -->
+        <path d="M200,86 C222,86 222,69 250,69" class="flow-line" marker-end="url(#arrow)"></path>
+        <path d="M200,100 C222,100 222,131 250,131" class="flow-line" marker-end="url(#arrow)"></path>
+
+        <!-- 2: gemini drafts -->
+        <g class="action-node">
+          <rect x="562" y="64" width="160" height="58" rx="9"></rect>
+          <text x="642" y="88" text-anchor="middle" class="node-title">Gemini drafts</text>
+          <text x="642" y="104" text-anchor="middle" class="node-title">the message</text>
+        </g>
+        <g class="step-badge"><circle cx="558" cy="60" r="10"></circle><text x="558" y="64" text-anchor="middle">2</text></g>
+
+        <!-- gates -> gemini (both must pass) -->
+        <path d="M442,69 C500,69 500,88 560,88" class="flow-line" marker-end="url(#arrow)"></path>
+        <path d="M442,131 C500,131 500,98 560,98" class="flow-line"></path>
+        <text x="500" y="58" text-anchor="middle" class="arrow-label">both must pass</text>
+
+        <!-- 3: edits, clicks Open in WhatsApp -->
+        <g class="action-node">
+          <rect x="762" y="60" width="190" height="66" rx="9"></rect>
+          <text x="857" y="84" text-anchor="middle" class="node-title">Manager edits, clicks</text>
+          <text x="857" y="100" text-anchor="middle" class="node-title">“Open in WhatsApp”</text>
+        </g>
+        <g class="step-badge"><circle cx="758" cy="56" r="10"></circle><text x="758" y="60" text-anchor="middle">3</text></g>
+
+        <path d="M722,93 L760,93" class="flow-line" marker-end="url(#arrow)"></path>
+
+        <!-- 4: whatsapp box (manual, spans both lanes) -->
+        <g class="manual-node">
+          <rect x="1050" y="64" width="200" height="460" rx="10"></rect>
+        </g>
+        <g class="step-badge"><circle cx="1046" cy="60" r="10"></circle><text x="1046" y="64" text-anchor="middle">4</text></g>
+        <text x="1150" y="45" text-anchor="middle" class="node-title" fill="var(--manual)">WhatsApp — outside the app</text>
+
+        <text x="1150" y="98" text-anchor="middle" class="node-sub" fill="var(--manual)">chat opens, pre-filled —</text>
+        <text x="1150" y="112" text-anchor="middle" class="node-sub" fill="var(--manual)">one press of Send</text>
+
+        <line x1="1150" y1="130" x2="1150" y2="440" stroke="var(--manual)" stroke-width="1" stroke-dasharray="1 6" opacity=".6"></line>
+
+        <text x="1150" y="462" text-anchor="middle" class="node-sub" fill="var(--manual)">client's reply</text>
+        <text x="1150" y="476" text-anchor="middle" class="node-sub" fill="var(--manual)">typed back in by hand</text>
+
+        <path d="M952,93 C990,93 1010,93 1048,98" class="manual-line" marker-end="url(#arrow)"></path>
+        <text x="1000" y="118" text-anchor="middle" class="arrow-label manual">wa.me — no copy</text>
+
+        <!-- 5: confirm back in the app -->
+        <path d="M1048,128 C1010,150 990,155 954,163" class="manual-line" marker-end="url(#arrow)"></path>
+        <text x="988" y="140" text-anchor="middle" class="arrow-label manual">back to the tab</text>
+
+        <g class="action-node">
+          <rect x="762" y="150" width="190" height="50" rx="9"></rect>
+          <text x="857" y="171" text-anchor="middle" class="node-title">Manager clicks</text>
+          <text x="857" y="187" text-anchor="middle" class="node-title">“Mark as sent”</text>
+        </g>
+        <g class="step-badge"><circle cx="758" cy="146" r="10"></circle><text x="758" y="150" text-anchor="middle">5</text></g>
+
+        <!-- ============= LANE B : reply &amp; resolve (y≈390-470), right to left ============= -->
+
+        <!-- whatsapp -> 5: transcribe -->
+        <path d="M1048,478 C1010,478 990,470 762,462" class="manual-line" marker-end="url(#arrow)"></path>
+        <text x="900" y="450" text-anchor="middle" class="arrow-label manual">reply, typed as a new row</text>
+
+        <g class="action-node">
+          <rect x="562" y="428" width="200" height="66" rx="9"></rect>
+          <text x="662" y="454" text-anchor="middle" class="node-title">Manager transcribes reply</text>
+          <text x="662" y="470" text-anchor="middle" class="node-title">into “Add feedback”</text>
+        </g>
+        <g class="step-badge"><circle cx="558" cy="424" r="10"></circle><text x="558" y="428" text-anchor="middle">6</text></g>
+
+        <!-- feedback.csv cylinder -->
+        <g class="data-node">
+          <ellipse cx="530" cy="358" rx="70" ry="13"></ellipse>
+          <rect x="460" y="358" width="140" height="46" ></rect>
+          <ellipse cx="530" cy="404" rx="70" ry="13"></ellipse>
+          <line x1="460" y1="358" x2="460" y2="404" stroke="var(--data)" stroke-width="1.6"></line>
+          <line x1="600" y1="358" x2="600" y2="404" stroke="var(--data)" stroke-width="1.6"></line>
+          <text x="530" y="384" text-anchor="middle" class="node-title">Feedback.csv</text>
+        </g>
+
+        <!-- outreach_log.csv cylinder -->
+        <g class="data-node">
+          <ellipse cx="530" cy="150" rx="70" ry="13"></ellipse>
+          <rect x="460" y="150" width="140" height="42"></rect>
+          <ellipse cx="530" cy="192" rx="70" ry="13"></ellipse>
+          <line x1="460" y1="150" x2="460" y2="192" stroke="var(--data)" stroke-width="1.6"></line>
+          <line x1="600" y1="150" x2="600" y2="192" stroke="var(--data)" stroke-width="1.6"></line>
+          <text x="530" y="175" text-anchor="middle" class="node-title">Outreach_log.csv</text>
+        </g>
+
+        <!-- 5 -> writes -> feedback.csv (linear step, plain) -->
+        <path d="M600,450 C580,432 560,415 545,404" class="flow-line" marker-end="url(#arrow)"></path>
+
+        <!-- 5 -> writes -> outreach_log.csv (side-effect for the future: dashed data) -->
+        <path d="M780,200 C740,196 650,182 602,172" class="data-line" marker-end="url(#arrow)"></path>
+        <text x="700" y="205" text-anchor="middle" class="arrow-label data">writes: sent_at, segment</text>
+
+        <!-- cylinders -> gates (reads, dashed data, curved through the middle) -->
+        <path d="M528,347 C500,255 420,150 344,94" class="data-line" marker-end="url(#arrow)"></path>
+        <text x="400" y="230" text-anchor="middle" class="arrow-label data" transform="rotate(-58 400 230)">reads: rating history</text>
+
+        <path d="M528,144 C500,136 400,132 344,130" class="data-line" marker-end="url(#arrow)"></path>
+        <text x="522" y="113" text-anchor="middle" class="arrow-label data">reads: last sent date</text>
+
+        <!-- feedback.csv -> rule check (linear, plain) -->
+        <path d="M458,390 C420,398 442,402 442,414" class="flow-line" marker-end="url(#arrow)"></path>
+
+        <!-- rule check -->
+        <g class="gate-node">
+          <rect x="252" y="392" width="190" height="46" rx="8"></rect>
+          <text x="347" y="411" text-anchor="middle" class="node-title">Rating ≤3,</text>
+          <text x="347" y="426" text-anchor="middle" class="node-sub sub">still unresolved?</text>
+        </g>
+
+        <!-- rule -> yes -> escalation queue -->
+        <path d="M252,406 C220,400 200,412 200,424" class="branch-yes" marker-end="url(#arrow)"></path>
+        <text x="222" y="392" text-anchor="middle" class="arrow-label branch">yes</text>
+
+        <g class="action-node">
+          <rect x="20" y="404" width="170" height="52" rx="9"></rect>
+          <text x="105" y="425" text-anchor="middle" class="node-title">Escalation queue —</text>
+          <text x="105" y="440" text-anchor="middle" class="node-title">name + phone shown</text>
+        </g>
+        <g class="step-badge"><circle cx="16" cy="400" r="10"></circle><text x="16" y="404" text-anchor="middle">7</text></g>
+
+        <!-- rule -> no -> terminal -->
+        <path d="M300,438 C280,458 280,470 270,478" class="flow-line" marker-end="url(#arrow)" opacity=".6"></path>
+        <text x="300" y="466" text-anchor="middle" class="arrow-label">no</text>
+
+        <g class="terminal-node">
+          <rect x="200" y="478" width="230" height="42" rx="8"></rect>
+          <text x="315" y="495" text-anchor="middle" class="node-sub">feeds NPS · trends ·</text>
+          <text x="315" y="509" text-anchor="middle" class="node-sub">service breakdown (read-only)</text>
+        </g>
+
+        <!-- escalation -> mark resolved -->
+        <path d="M105,456 L105,486" class="flow-line" marker-end="url(#arrow)"></path>
+
+        <g class="action-node">
+          <rect x="20" y="486" width="170" height="52" rx="9"></rect>
+          <text x="105" y="507" text-anchor="middle" class="node-title">Manager calls, clicks</text>
+          <text x="105" y="522" text-anchor="middle" class="node-title">“Mark resolved”</text>
+        </g>
+        <g class="step-badge"><circle cx="16" cy="482" r="10"></circle><text x="16" y="486" text-anchor="middle">8</text></g>
+
+        <!-- mark resolved -> writes back -> feedback.csv (dashed data, closes the loop) -->
+        <path d="M190,502 C280,540 400,470 458,398" class="data-line" marker-end="url(#arrow)"></path>
+        <text x="300" y="546" text-anchor="middle" class="arrow-label data">writes: resolved = true</text>
+
+      </svg>
+    </div>
+
+    <figcaption>
+      A message's full lifecycle: an account manager starts it, two gates check history before
+      Gemini is asked for a draft, a click-to-chat link opens WhatsApp pre-filled so sending is
+      one press rather than a copy-paste, the reply still comes back by hand, and resolving a
+      callback writes back into the same log the first gate reads — so next time, the gate sees it.
+    </figcaption>
+  </figure>
+
+  <div class="legend">
+    <span class="legend-item"><span class="swatch solid"></span> next step in this message's path</span>
+    <span class="legend-item"><span class="swatch data"></span> reads or writes shared history</span>
+    <span class="legend-item"><span class="swatch manual"></span> leaves the app — a human bridges it</span>
+    <span class="legend-item"><span class="swatch box gate"></span> a rule that can block the flow</span>
+    <span class="legend-item"><span class="swatch box cyl"></span> a CSV file on disk</span>
+  </div>
+
+  <div class="grid-two">
+    <div class="panel">
+      <h2><span class="tag" style="background:var(--manual)"></span>Why a human still bridges it twice</h2>
+      <p>
+        The app has no WhatsApp Business API connection, so it cannot send a message or read a
+        reply on its own. <strong>Sending</strong> is now a click-to-chat link
+        (<em>wa.me</em>) — the chat opens with the draft already typed in, so the only manual
+        act left is pressing Send. <strong>Logging the reply</strong> is unchanged: there is no
+        read access to WhatsApp, so the account manager still types what the client said into
+        "Add feedback" by hand. A real WhatsApp Business API would close that second gap; it
+        needs Meta business verification and per-conversation cost that a course prototype
+        doesn't carry.
+      </p>
+    </div>
+    <div class="panel">
+      <h2><span class="tag" style="background:var(--accent)"></span>Why the gates read history, not a checkbox</h2>
+      <p>
+        The <strong>review gate</strong> and <strong>cooldown gate</strong> both query the same
+        two files the bottom half of the loop writes to — a client's own feedback record decides
+        whether they can be asked for a public review, and their own send history decides whether
+        they're due a message at all. Neither can be bypassed by a rushed click, because neither
+        is a click to begin with.
+      </p>
+    </div>
+  </div>
+
+  <div class="status-strip">
+    <span class="chip proven">rules &amp; data layer — 69 tests passing</span>
+    <span class="chip proven">escalation queue, resolve, cooldown — run live in-browser</span>
+    <span class="chip proven">wa.me link — format verified, matches WhatsApp's own spec</span>
+    <span class="chip unproven">Gemini draft quality — not yet seen with a real key</span>
+    <span class="chip unproven">click-through to WhatsApp — not yet clicked by a human</span>
+    <span class="chip unproven">reply logging — still fully manual, by design</span>
+  </div>
+
+  <footer>Mukta Publicity — Client Outreach &amp; Feedback Assistant · system diagram</footer>
+
+</div>

@@ -1,0 +1,11 @@
+# Palette sampled from muktapublicity.com: the brand red used across their
+# headings, buttons and links, on the light ground their logo is drawn for.
+[theme]
+primaryColor = "#C40C14"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F5F5F5"
+textColor = "#2C2C2C"
+font = "sans serif"
+
+[server]
+headless = true
